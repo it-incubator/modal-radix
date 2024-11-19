@@ -1,6 +1,6 @@
 export default {
   logo: <span>It-incubator</span>,
   project: {
-    link: "https://it-incubator.io/",
+    link: "https://github.com/it-incubator/modal-radix",
   },
 }
