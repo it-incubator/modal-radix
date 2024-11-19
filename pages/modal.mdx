@@ -1,0 +1,189 @@
+import {Callout} from "nextra/components"
+
+# Модальное окно
+
+Модальное окно — это графический элемент интерфейса, который отображается поверх основного содержимого веб-страницы
+или приложения и требует взаимодействия с пользователем перед тем, как он сможет вернуться к основной странице.
+Модальное окно временно блокирует доступ к основной части интерфейса, пока пользователь не выполнит какое-либо действие
+(например, нажмет кнопку "Закрыть" или "ОК").
+
+<Callout type={'info'} emoji={'🔗'}>
+  [Примеры модальных окон](<https://www.figma.com/design/5TBtsBik0ywSxtvh68Tc4f/Inctagram-(Copy)?node-id=1-12&node-type=canvas&t=5S8VAbwt9qZ6J9h2-0>)
+</Callout>
+
+## Базовое модальное окно
+
+Создадим модальное окно
+
+```tsx filename="src/components/Modal/Modal.tsx"
+import s from './Modal.module.css'
+
+type Props = {
+  open: boolean
+  onClose?: () => void
+}
+
+export const Modal = ({ onClose, open }: Props) => {
+  return (
+    <>
+      {open && (
+        <div className={s.overlay}>
+          <div className={s.content}>
+            <h3 className={s.title}>Cart</h3>
+            <hr />
+            <ul>
+              <li>1 товар</li>
+              <li>2 товар</li>
+              <li>3 товар</li>
+            </ul>
+            <button className={s.closeIcon} onClick={onClose}>
+              x
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+```
+
+```css filename="Modal.module.css"
+.overlay {
+  background: rgba(0, 0, 0, 0.5);
+  position: absolute;
+  inset: 0;
+}
+
+.content {
+  background-color: white;
+  border-radius: 6px;
+  box-shadow:
+    hsl(206 22% 7% / 35%) 0px 10px 38px -10px,
+    hsl(206 22% 7% / 20%) 0px 10px 20px -15px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 85vh;
+  min-width: 320px;
+  padding: 25px;
+}
+
+.title {
+  margin: 0;
+}
+
+.closeIcon {
+  border-radius: 100%;
+  height: 25px;
+  width: 25px;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+```
+
+### Modal in App
+
+В `App.tsx` отрисовываем модалку и убеждаемся, чот все хорошо
+
+```tsx filename="App.tsx"
+function App() {
+  return (
+      <Modal open={true} />
+  )
+}
+```
+
+### Modal in Cart
+
+Создадим компонент `Cart` в котором будем управлять состоянием модального окна и отрисуем `Cart.tsx` в `App.tsx`
+
+```tsx filename="src/components/Cart/Cart.tsx"
+export const Cart = () => {
+  const [showModal, setShowModal] = useState(false)
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}>Cart</button>
+      {showModal && <Modal open={showModal} onClose={() => setShowModal(false)}></Modal>}
+    </>
+  )
+}
+```
+
+**Результат**. Кликаем на модалку, она открывается и все хорошо 🚀
+
+![open modal](https://production-it-incubator.s3.eu-central-1.amazonaws.com/file-manager/Image/004e2d12-4884-4a8c-bbd3-c55d34cb9add_open-modal.gif)
+
+## Children
+
+Если взглянуть на код модалки, то у нас там хардкод, а вариантов модалок много. Значит нужно каким-то образом передавать
+этот контент в компонент `Modal.tsx`
+
+`Children` — это специальный пропс, который используется для передачи дочерних элементов внутрь компонента.
+Он позволяет одному компоненту оборачивать другие элементы, чтобы отображать их внутри себя. Это удобно, если ты хочешь
+создать "обёртку" или "контейнер", куда можно передать различные дочерние элементы.
+
+### Когда использовать children
+
+- Для создания контейнеров: Компоненты, которые должны оборачивать другие элементы (например, модальные окна, карточки,
+списки).
+- Для гибкости и повторного использования: Компонент может принимать любой контент через `children`, что делает его более
+универсальным.
+
+Добавим `children` в `Modal.tsx`
+
+```tsx filename="Modal.tsx" /children/ /modalTitle/
+type Props = {
+  open: boolean
+  onClose?: () => void
+  children: ReactNode
+  modalTitle: string
+}
+
+export const Modal = ({ onClose, open, children, modalTitle }: Props) => {
+  return (
+    <>
+      {open && (
+        <div className={s.overlay}>
+          <div className={s.content}>
+            <h3 className={s.title}>{modalTitle}</h3>
+            <hr />
+            {children}
+            <button className={s.closeIcon} onClick={onClose}>
+              x
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+```
+
+```tsx filename="Cart.tsx" /modalTitle/ {12-16}
+import { useState } from 'react'
+import { Modal } from '../Modal/Modal.tsx'
+
+export const Cart = () => {
+  const [showModal, setShowModal] = useState(false)
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}>Cart</button>
+      {showModal && (
+        <Modal open={showModal} modalTitle={'Cart'} onClose={() => setShowModal(false)}>
+          <ul>
+            <li>1 товар</li>
+            <li>2 товар</li>
+            <li>3 товар</li>
+          </ul>
+        </Modal>
+      )}
+    </>
+  )
+}
+```
+
+**Результат**. Получаем тот же результат, но теперь модалку можно переиспользовать 🚀

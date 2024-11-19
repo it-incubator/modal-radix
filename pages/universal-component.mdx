@@ -1,0 +1,330 @@
+import { Callout } from 'nextra/components'
+
+# Универсальный компонент
+
+На этом казалось бы можно закончить с модалкой, но мы упустили важный концепт касаемый универсальности компонента.
+
+## Button
+
+Рассмотри этот концепт на примере кнопки, т.к. это будет очевиднее. И потом применим к модальному окну тот же подход
+
+Создадим универсальную кнопку простым способом
+
+```tsx filename="Button.tsx"
+import { ReactNode } from 'react'
+
+type Props = {
+  children: ReactNode
+  onClick?: () => void
+  title?: string
+  type?: 'button' | 'submit' | 'reset'
+}
+export const Button = ({ children, onClick, title, type }: Props) => {
+  return (
+    <button onClick={onClick} title={title} type={type}>
+      {children}
+    </button>
+  )
+}
+```
+
+<Callout type={'error'} emoji={'❗'}>
+  Но такой подход очень плохой, т.к. у кнопки [сотни
+  атрибутов](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#attributes)
+  и все их описывать является плохой идеей
+
+</Callout>
+
+### ComponentProps
+
+#### Теория
+
+Есть различные способы получения стандартных пропсов `HTML-элементов`
+
+<Callout type={'info'} emoji={'🔗'}>
+
+  - [ComponentProps](https://react-typescript-cheatsheet.netlify.app/docs/react-types/componentprops/)
+
+  - [ComponentProps: React's Most Useful Type Helper](https://www.totaltypescript.com/react-component-props-type-helper)
+
+  - [Wrapping/Mirroring a HTML
+  Element](https://react-typescript-cheatsheet.netlify.app/docs/advanced/patterns_by_usecase/)
+
+</Callout>
+
+- `ComponentProps` извлекает все стандартные пропсы указанного HTML-элемента (в данном случае `<button>`)
+
+```tsx filename="Button.tsx" /ComponentProps/
+type Props = ComponentProps<'button'>
+
+export const Button = ({ ...rest }: Props) => {
+  return <button {...rest} />
+}
+```
+
+- `ComponentPropsWithRef` - это расширение `ComponentProps`, которое добавляет поддержку [рефов](https://react.dev/learn/referencing-values-with-refs).
+Если вы используете [React.forwardRef](https://react.dev/reference/react/forwardRef) для компонента, то этот тип будет
+учитывать реф, ассоциированный с указанным элементом.
+
+```tsx filename="Button.tsx" /ref/ /ComponentPropsWithRef/
+type Ref = HTMLButtonElement
+type Props = ComponentPropsWithRef<'button'>
+
+export const Button = forwardRef<Ref, Props>(({ ...rest }, ref) => {
+  return <button ref={ref} {...rest} />
+})
+```
+
+- `ComponentPropsWithoutRef` — это тоже расширение `ComponentProps`, но оно явно исключает поддержку рефов. Это полезно,
+если вы хотите использовать все стандартные пропсы кнопки, но не хотите включать реф даже при использовании компонента
+с React.forwardRef.
+
+```tsx filename="Button.tsx" /ComponentPropsWithoutRef/
+type Props = ComponentPropsWithoutRef<'button'>
+
+export const Button = ({ ...rest }: Props) => {
+  return <button {...rest} />
+}
+```
+
+#### Краткий итог
+
+| Тип                                  | Описание                                           | Пример использования                                   |
+| ------------------------------------ | -------------------------------------------------- | ------------------------------------------------------ |
+| `ComponentProps<'button'>`           | Извлекает все пропсы кнопки **без рефов**          | Используется, когда рефы не нужны                      |
+| `ComponentPropsWithRef<'button'>`    | Извлекает все пропсы кнопки с **поддержкой рефов** | Используется с `React.forwardRef` для поддержки рефов  |
+| `ComponentPropsWithoutRef<'button'>` | Извлекает все пропсы кнопки и **исключает рефы**   | Используется, когда рефы не нужны, даже с `forwardRef` |
+
+Такой подход обеспечивает гибкость, позволяя разработчику использовать ваш компонент кнопки так же, как стандартный
+элемент кнопки, и при этом добавлять дополнительную функциональность.
+
+Например, если вы хотите создать свою кнопку с дополнительными стилями, но при этом сохранить все возможности
+стандартного элемента кнопки, вы можете это сделать, используя `ComponentPropsWithoutRef`.
+
+#### Практика
+
+Теперь кнопку можем расширять пропсами которые мы сами хотим добавить.
+
+Согласно [дизайну](<https://www.figma.com/design/5TBtsBik0ywSxtvh68Tc4f/Inctagram-(Copy)?node-id=303-3570&node-type=frame&t=SFFAup4gwMn8twfa-0>)
+у кнопок есть несколько цветов. Быстро реализуем эту задачу
+
+```tsx filename="Button.tsx"
+import { ComponentPropsWithoutRef } from 'react'
+import s from './Button.module.css'
+
+type Props = {
+  variant?: 'primary' | 'secondary' | 'outlined'
+} & ComponentPropsWithoutRef<'button'>
+
+export const Button = ({ variant = 'primary', className, ...rest }: Props) => {
+  return (
+    <button
+      className={`${s.button}
+  ${variant === 'primary' ? s.primary : ''}
+  ${variant === 'secondary' ? s.secondary : ''}
+  ${variant === 'outlined' ? s.outlined : ''}
+  ${className}
+     `}
+      {...rest}
+    />
+  )
+}
+```
+
+```css filename="Button.module.css"
+.button {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  color: var(--light-100);
+  font-family: inherit;
+  padding: 5px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.primary {
+  background-color: var(--accent-500);
+}
+
+.secondary {
+  background-color: var(--dark-300);
+}
+
+.outlined {
+  color: var(--accent-500);
+  border: 1px solid var(--accent-500);
+  background-color: transparent;
+}
+```
+
+**Результат**. Заменим кнопки в компоненте `DeletePostModal.tsx` и убедимся, что кнопки отрабытвают верно и стили
+применились 🚀
+
+![radix modal 4](https://production-it-incubator.s3.eu-central-1.amazonaws.com/file-manager/Image/f45a36de-6ce6-4122-a616-fc4301450215_radix-modal-4.png)
+
+### clsx
+
+Запись определения стилей выглядит некрасиво. Воспользуемся популярной библиотекой для склеивания стилей [clsx](https://www.npmjs.com/package/clsx)
+
+```tsx filename="Button.tsx"
+export const Button = ({ variant = 'primary', className, ...rest }: Props) => {
+  return <button className={clsx(s.button, s[variant], className)} {...rest} />
+}
+```
+
+**Результат**. Выглядит гораздо приятнее 🚀
+
+**Вывод**. При создании универсальной компоненты мы обязаны сразу же залаживать атрибуты по умолчанию и делаем это при
+помощи `ComponentPropsWithoutRef` или `ComponentPropsWithRef`
+
+### Modal
+
+Согласно полученным знаниям сделаем компонент `ModalRadix.tsx` универсальным:
+
+- добавим `ComponentPropsWithoutRef`
+- уберем `children`, т.к. он входит в `ComponentPropsWithoutRef`
+- добавим свойство `size`(для демонстрации возможностей)
+
+```tsx filename="ModalRadix.tsx" {7, 13-14, 23, 25, 28}
+import * as Dialog from '@radix-ui/react-dialog'
+import { Cross2Icon } from '@radix-ui/react-icons'
+import clsx from 'clsx'
+import { ComponentPropsWithoutRef } from 'react'
+import s from './ModalRadix.module.css'
+
+type ModalSize = 'lg' | 'md' | 'sm'
+
+type Props = {
+  open: boolean
+  onClose: () => void
+  modalTitle: string
+  size?: ModalSize
+} & ComponentPropsWithoutRef<'div'>
+
+export const ModalRadix = ({
+  size = 'md',
+  modalTitle,
+  onClose,
+  children,
+  className,
+  open,
+  ...rest
+}: Props) => (
+  <Dialog.Root open={open} onOpenChange={onClose} {...rest}>
+    <Dialog.Portal>
+      <Dialog.Overlay className={s.Overlay} />
+      <Dialog.Content className={clsx(s.Content, s[size], className)}>
+        <Dialog.Title className={s.Title}>{modalTitle}</Dialog.Title>
+        <hr />
+        {children}
+        <Dialog.Close asChild>
+          <button className={s.IconButton} aria-label="Close">
+            <Cross2Icon />
+          </button>
+        </Dialog.Close>
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog.Root>
+)
+```
+
+```css filename="ModalRadix.module.css"
+/*...*/
+.Content {
+  /*...*/
+}
+
+.sm {
+  width: 367px;
+}
+
+.md {
+  width: 532px;
+}
+
+.lg {
+  width: 764px;
+}
+/*...*/
+```
+
+**Результат**. Попробуйте руками задать разные параметры sm и убедитесь, что все верно отрабатывает 🚀
+
+### Полиморфные компоненты
+
+Посмотрите на компоент `ModalRadix.tsx` обратите внимние на атрибут `asChild`. Что это значит и зачем нужно ? 🤔
+
+```tsx filename="ModalRadix.tsx" /asChild/
+export const ModalRadix = (/*...*/) => (
+  /*...*/
+  <Dialog.Close asChild>
+    <button className={s.IconButton} aria-label="Close">
+      <Cross2Icon />
+    </button>
+  </Dialog.Close>
+  /*...*/
+)
+```
+
+Довольно часто дизайнеры рисует на макете кнопку, но эта кнопка должна отрабатывать как ссылка.
+[Пример Sign up](<https://www.figma.com/design/5TBtsBik0ywSxtvh68Tc4f/Inctagram-(Copy)?node-id=314-5903&node-type=frame&t=qaDftnbeH4YXYNCL-0>)
+
+Однако функциональность у них разная:
+
+- **Кнопка** обычно используется для выполнения действий, таких как отправка формы, запуск скриптов или других
+интерактивных элементов на странице (например, открытие модального окна).
+
+- **Ссылка** предназначена для навигации, перехода на другую страницу, раздел или внешний ресурс.
+
+Компоненты, которые выглядят одинаково, но рендерят разные элементы называются полиморфными:
+
+<Callout type={'info'} emoji={'🔗'}>
+
+  [How to Build Strongly Typed Polymorphic
+  Components](https://www.freecodecamp.org/news/build-strongly-typed-polymorphic-components-with-react-and-typescript/)
+
+</Callout>
+
+Для реализации полиморфных компонент в `Radix UI` используется [Slot](https://www.radix-ui.com/primitives/docs/utilities/slot).
+
+```bash filename="Terminal"
+pnpm install @radix-ui/react-slot
+```
+
+Наша кнопка будет выглядеть вот так
+
+```tsx filename="Button.tsx" {7} /asChild/
+type Props = {
+  variant?: 'primary' | 'secondary' | 'outlined'
+  asChild?: boolean
+} & ComponentPropsWithoutRef<'button'>
+
+export const Button = ({ variant = 'primary', className, asChild, ...rest }: Props) => {
+  const Component = asChild ? Slot : 'button'
+
+  return <Component className={clsx(s.button, s[variant], className)} {...rest} />
+}
+```
+
+По умолчанию наши кнопки будут как и прежде рендерится как кнопки, но если нам нужна будет ссылка, то делаем вот так
+
+```tsx filename="Header.tsx" {6-8}
+export const Header = () => {
+  return (
+    <div className={s.headerWrapper}>
+      <div className={s.container}>
+        <h3>logotype</h3>
+        <Button asChild>
+          <a href="/sign-up">Sign Up</a>
+        </Button>
+        <Cart />
+      </div>
+    </div>
+  )
+}
+```
+
+**Результат**. И у нас рендерится вместо кнопки ссылка 🚀
+
+![link as button](https://production-it-incubator.s3.eu-central-1.amazonaws.com/file-manager/Image/11e92803-c952-457a-8bb6-ffb153c73c42_slot.png)
