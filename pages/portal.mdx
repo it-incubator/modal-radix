@@ -5,9 +5,10 @@ import { Callout } from 'nextra/components'
 ## Header
 
 Чтобы продемонстрировать для чего нужен портал, реализуем стандартную задачу. Добавим в наше приложение `header`, который
-всегда будет в зафиксированном положение. И в `header` отрисуем компонент `Cart.tsx`
+всегда будет в зафиксированном положение.  Компонент `Header.tsx` отрисуем в `App.tsx`. В `Header.tsx` отрисуем
+компонент `Cart.tsx`
 
-```tsx filename="Header.tsx"
+```tsx filename="src/components/Header/Header.tsx"
 export const Header = () => {
   return (
     <div className={s.headerWrapper}>
@@ -63,7 +64,7 @@ export const Header = () => {
 ## Portal
 
 <Callout emoji={'🔗'} type={'info'}>
-  - [createPortal](https://react.dev/reference/react-dom/createPortal)
+  [createPortal](https://react.dev/reference/react-dom/createPortal)
 
 </Callout>
 
