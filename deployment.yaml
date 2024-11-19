@@ -22,8 +22,8 @@ spec:
            image: REGISTRY_HOSTNAME/PROJECT:TAG_VERSION
            resources:
               requests:
-                memory: "5Mi"
+                memory: "300Mi"
               limits:
-                memory: "7Mi"
+                memory: "500Mi"
            ports:
              - containerPort: PORT_CONTAINER
